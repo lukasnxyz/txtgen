@@ -107,7 +107,7 @@ class BigramLanguageModel(nn.Module):
     tok_emb = self.token_embedding_table(idx)
     pos_emb = self.position_embedding_table(torch.arange(T, device=device))
     x = tok_emb + pos_emb
-    x = self.sa_head(x)
+    x = self.sa_heads(x)
     logits = self.lm_head(x) # (B,T,vocab_size)
     
     if targets is None:
