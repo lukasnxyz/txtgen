@@ -6,7 +6,7 @@ import time
 torch.manual_seed(42)
 d_opts = [('cuda', torch.cuda.is_available()), ('mps', torch.backends.mps.is_available()), ('cpu', True)]
 device = next(device for device, available in d_opts if available)
-print(f"using device: {device}")
+print(f'using device: {device}')
 
 with open('data/tiny_shakespeare.txt', 'r', encoding='utf-8') as f: data_txt = f.read()
 # get all chars
@@ -28,13 +28,15 @@ val_data = data[n:]
 batch_size = 32
 block_size = 8
 n_embd = 32
+dropout = 0.2
+n_blocks = 3
+n_heads = 4
 learning_rate = 1e-3
 max_iters = 5000
 eval_interval = 500
-eval_iters = 200
 
 def get_batch(split):
-    data = train_data if split == "train" else val_data
+    data = train_data if split == 'train' else val_data
     ix = torch.randint(len(data) - block_size, (batch_size,))
     x = torch.stack([data[i:i+block_size] for i in ix])
     y = torch.stack([data[i+1:i+block_size+1] for i in ix])
@@ -44,7 +46,8 @@ def get_batch(split):
 def estimate_loss():
     out = {}
     model.eval()
-    for split in ["train", "val"]:
+    eval_iters = 200
+    for split in ['train', 'val']:
         losses = torch.zeros(eval_iters)
         for k in range(eval_iters):
             X, Y = get_batch(split)
@@ -62,6 +65,7 @@ class Head(nn.Module):
         self.query = nn.Linear(n_embd, head_size, bias=False)
         self.value = nn.Linear(n_embd, head_size, bias=False)
         self.register_buffer('tril', torch.tril(torch.ones(block_size, block_size)))
+        self.dropout = nn.Dropout(dropout)
 
     def forward(self, x):
         B, T, C = x.shape
@@ -71,26 +75,63 @@ class Head(nn.Module):
         wei = q @ k.transpose(-2, -1) * C**-0.5
         wei = wei.masked_fill(self.tril[:T, :T] == 0, float('-inf'))
         wei = F.softmax(wei, dim=-1)
+        wei = self.dropout(wei)
         # weighted aggregation of the values
         v = self.value(x)
         out = wei @ v
         return out
 
 class MultiHeadAttention(nn.Module):
-    def __init__(self, num_heads, head_size):
-        super().__init()
-        self.heads = nn.ModuleList([Head(head_size) for _ in range(num_heads)])
+    def __init__(self, n_heads, head_size):
+        super().__init__()
+        self.heads = nn.ModuleList([Head(head_size) for _ in range(n_heads)])
+        self.proj = nn.Linear(n_embd, n_embd)
+        self.dropout = nn.Dropout(dropout)
 
     def forward(self, x):
-        return torch.cat([h(x) for h in self.heads], dim=-1)
+        out = torch.cat([h(x) for h in self.heads], dim=-1)
+        out = self.proj(out)
+        out = self.dropout(out)
+        return out
+    
+class FeedForward(nn.Module):
+    def __init__(self, n_embd):
+        super().__init__()
+        self.net = nn.Sequential(
+            nn.Linear(n_embd, n_embd * 4),
+            nn.ReLU(),
+            nn.Linear(n_embd * 4, n_embd),
+            nn.Dropout(dropout)
+        )
+
+    def forward(self, x):
+        return self.net(x)
+
+class Block(nn.Module):
+    def __init__(self, n_embd, n_heads):
+        super().__init__()
+        head_size = n_embd // n_heads
+        self.sa = MultiHeadAttention(n_heads, head_size)
+        self.ffwd = FeedForward(n_embd)
+        self.ln1 = nn.LayerNorm(n_embd)
+        self.ln2 = nn.LayerNorm(n_embd)
+    
+    def forward(self, x):
+        x = x + self.sa(self.ln1(x))
+        x = x + self.ffwd(self.ln2(x))
+        return x
 
 class LanguageModel(nn.Module):
     def __init__(self):
         super().__init__()
         self.token_embedding_table = nn.Embedding(vocab_size, n_embd)
-        self.position_embedding_table = nn.Embedding(block_size, n_embd)
-        # instead of 1 attention channel of 32, we have 4 of size 8
-        self.sa_heads = MultiHeadAttention(4, n_embd//4) 
+        self.position_embedding_table = nn.Embedding(block_size, n_embd) # [0, T-1]
+        self.blocks = nn.Sequential(*[Block(n_embd, n_heads=n_heads) for _ in range(n_blocks)])
+        self.blocks = nn.Sequential(
+            Block(n_embd, n_heads=4),
+            Block(n_embd, n_heads=4),
+            Block(n_embd, n_heads=4),
+        )
         self.lm_head = nn.Linear(n_embd, vocab_size)
     
     def forward(self, idx, targets=None):
@@ -98,7 +139,7 @@ class LanguageModel(nn.Module):
         tok_emb = self.token_embedding_table(idx)
         pos_emb = self.position_embedding_table(torch.arange(T, device=device))
         x = tok_emb + pos_emb
-        x = self.sa_heads(x)
+        x = self.blocks(x)
         logits = self.lm_head(x)
 
         if targets is None:
@@ -133,7 +174,7 @@ lossi = []
 
 s_t = time.time()
 for i in range(max_iters):
-    xb, yb = get_batch("train")
+    xb, yb = get_batch('train')
 
     logits, loss = model(xb, yb)
     optimizer.zero_grad(set_to_none=True)
@@ -143,11 +184,10 @@ for i in range(max_iters):
     lossi.append(loss.item())
     if i % eval_interval == 0:
         losses = estimate_loss()
-        print(f"step {i}: train loss {losses['train']:.4f}, val loss {losses['val']:.4f}")
+        print(f'step {i}: train loss {losses["train"]:.4f}, val loss {losses["val"]:.4f}')
 e_t = time.time()
 print(f'training took: {e_t - s_t:.3f}s')
 
 print('-- After Training')
 print(f'loss: {lossi[-1]:.4f}')
-#print(decode(model.generate(torch.zeros((1, 1), dtype=torch.long, device=device), max_new_tokens=1000)[0].tolist()))
 print(decode(model.generate(torch.zeros((1, 1), dtype=torch.long, device=device), max_new_tokens=1000)[0].tolist()))
