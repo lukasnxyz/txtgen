@@ -1,4 +1,4 @@
-### Transformers Gen (temporary repo until idea comes)
+### Transformer Gen 
 
 ### Quick start
 ```bash
