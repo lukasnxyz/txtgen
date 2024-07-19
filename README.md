@@ -1,4 +1,4 @@
-### Transformer Gen 
+### Text Generation
 
 ### Quick start
 ```bash
@@ -7,5 +7,5 @@ pip3 install -r requirements.txt
 ```
 download datasets
 ```bash
-python3 prepare_data.py
+python3 get_data.py
 ```

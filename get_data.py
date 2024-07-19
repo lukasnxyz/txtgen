@@ -8,7 +8,7 @@ choice = int(input('> '))
 data_dir = 'data/'
 if not os.path.exists(data_dir): 
     print(f'making dir: {data_dir}')
-    os.makedirs(data_dir)
+    os.makedirs(data_diri)
 
 urls = ['https://raw.githubusercontent.com/karpathy/makemore/master/names.txt',
         'https://raw.githubusercontent.com/karpathy/char-rnn/master/data/tinyshakespeare/input.txt',
@@ -28,7 +28,7 @@ match choice:
                 print(f'downloading {urls[choice]}')
                 f.write(requests.get(urls[choice]).text)
     case 2: 
-        in_path = os.path.join(data_dir, 'truth_sentences.txt')
+        in_path = os.path.join(data_dir, 'truths.txt')
         if not os.path.exists(in_path):
             with open(in_path, 'w', encoding='utf-8') as f: 
                 print(f'downloading {urls[choice]}')
