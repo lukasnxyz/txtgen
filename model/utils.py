@@ -1,3 +1,5 @@
+from itertools import chain
+
 def n_params(m):
     np = 0
     for p in list(m.parameters()):
@@ -6,3 +8,6 @@ def n_params(m):
             nn = nn*s
         np += nn
     return np
+
+def flatten_list(n_list: list):
+    return list(chain(*n_list))
