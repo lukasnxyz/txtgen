@@ -8,7 +8,7 @@ choice = int(input('> '))
 data_dir = 'data/'
 if not os.path.exists(data_dir): 
     print(f'making dir: {data_dir}')
-    os.makedirs(data_diri)
+    os.makedirs(data_dir)
 
 urls = ['https://raw.githubusercontent.com/karpathy/makemore/master/names.txt',
         'https://raw.githubusercontent.com/karpathy/char-rnn/master/data/tinyshakespeare/input.txt',
