@@ -8,6 +8,3 @@ def n_params(m):
             nn = nn*s
         np += nn
     return np
-
-def flatten_list(n_list: list):
-    return list(chain(*n_list))
