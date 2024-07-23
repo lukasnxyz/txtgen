@@ -3,13 +3,13 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 class Head(nn.Module):
-    def __init__(self, block_size: int, head_size: int, n_embd: int):
+    def __init__(self, block_size: int, head_size: int, n_embd: int, dropout: int):
         super().__init__()
         self.key = nn.Linear(n_embd, head_size, bias=False)
         self.query = nn.Linear(n_embd, head_size, bias=False)
         self.value = nn.Linear(n_embd, head_size, bias=False)
         self.register_buffer('tril', torch.tril(torch.ones(block_size, block_size)))
-        self.dropout = nn.Dropout(0.2)
+        self.dropout = nn.Dropout(dropout)
 
     def forward(self, x):
         B, T, C = x.shape
@@ -26,11 +26,11 @@ class Head(nn.Module):
         return out
 
 class MultiHeadAttention(nn.Module):
-    def __init__(self, block_size: int, n_embd: int, n_heads: int, head_size: int):
+    def __init__(self, block_size: int, n_embd: int, n_heads: int, head_size: int, dropout: int):
         super().__init__()
-        self.heads = nn.ModuleList([Head(block_size, head_size, n_embd) for _ in range(n_heads)])
+        self.heads = nn.ModuleList([Head(block_size, head_size, n_embd, dropout) for _ in range(n_heads)])
         self.proj = nn.Linear(n_embd, n_embd)
-        self.dropout = nn.Dropout(0.2)
+        self.dropout = nn.Dropout(dropout)
 
     def forward(self, x):
         out = torch.cat([h(x) for h in self.heads], dim=-1)
@@ -39,24 +39,24 @@ class MultiHeadAttention(nn.Module):
         return out
     
 class FeedForward(nn.Module):
-    def __init__(self, n_embd):
+    def __init__(self, n_embd: int, dropout: int):
         super().__init__()
         self.net = nn.Sequential(
             nn.Linear(n_embd, n_embd * 4),
             nn.ReLU(),
             nn.Linear(n_embd * 4, n_embd),
-            nn.Dropout(0.2)
+            nn.Dropout(dropout)
         )
 
     def forward(self, x):
         return self.net(x)
 
 class Block(nn.Module):
-    def __init__(self, block_size: int, n_embd: int, n_heads: int):
+    def __init__(self, block_size: int, n_embd: int, n_heads: int, dropout: int=0.2):
         super().__init__()
         head_size = n_embd // n_heads
-        self.sa = MultiHeadAttention(block_size, n_embd, n_heads, head_size)
-        self.ffwd = FeedForward(n_embd)
+        self.sa = MultiHeadAttention(block_size, n_embd, n_heads, head_size, dropout)
+        self.ffwd = FeedForward(n_embd, dropout)
         self.ln1 = nn.LayerNorm(n_embd)
         self.ln2 = nn.LayerNorm(n_embd)
     
