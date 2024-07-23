@@ -12,7 +12,7 @@ python3 get_data.py
 
 ### Stats
 * train loss 2.9713, val loss 3.5299
-* train loss 1.8865, val loss 7.1341
+* train loss 1.8865, val loss 7.1341 (19.4m on mba m3 16gb)
 
 ### To run in Colab
 ```python
