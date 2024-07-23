@@ -52,7 +52,7 @@ class FeedForward(nn.Module):
         return self.net(x)
 
 class Block(nn.Module):
-    def __init__(self, block_size: int, n_embd: int, n_heads: int, dropout: int=0.2):
+    def __init__(self, block_size: int, n_embd: int, n_heads: int, dropout: int):
         super().__init__()
         head_size = n_embd // n_heads
         self.sa = MultiHeadAttention(block_size, n_embd, n_heads, head_size, dropout)
@@ -66,7 +66,7 @@ class Block(nn.Module):
         return x
 
 class TLM(nn.Module):
-    def __init__(self, block_size: int, n_embd: int, vocab_size: int, n_blocks: int, n_heads: int, device):
+    def __init__(self, block_size: int, n_embd: int, vocab_size: int, n_blocks: int, n_heads: int, device, dropout: int=0.2):
         super().__init__()
         self.block_size = block_size
         self.n_embd = n_embd
@@ -74,10 +74,11 @@ class TLM(nn.Module):
         self.n_blocks = n_blocks
         self.n_heads = n_heads
         self.device = device
+        self.dropout = dropout
 
         self.token_embedding_table = nn.Embedding(self.vocab_size, self.n_embd)
         self.position_embedding_table = nn.Embedding(self.block_size, self.n_embd) # [0, T-1]
-        self.blocks = nn.Sequential(*[Block(self.block_size, self.n_embd, self.n_heads) for _ in range(self.n_blocks)])
+        self.blocks = nn.Sequential(*[Block(self.block_size, self.n_embd, self.n_heads, self.dropout) for _ in range(self.n_blocks)])
         self.lm_head = nn.Linear(self.n_embd, self.vocab_size)
     
     def forward(self, idx, targets=None):
